@@ -39,59 +39,11 @@ double When()
     return ((double) tp.tv_sec + (double) tp.tv_usec * 1e-6);
 }
 
-// MARK: MPI CODE
-
-//// Reduce values to one node
-//float ReduceSum(int numdim, int rank, float value)
-//{
-//    int notparticipating = 0;
-//    int bitmask = 1;
-//    float sum = value;
-//    float newvalue;
-//    for(int i = 0; i < numdim; i++) {
-//        if ((rank & notparticipating) == 0) {
-//            if ((rank & bitmask) != 0) {
-//                int msg_dest = rank ^ bitmask;
-//                send(sum, msg_dest);
-//            } else {
-//                int msg_src = rank ^ bitmask;
-//                recv(&newvalue, msg_src);
-//                sum += newvalue;
-//            }
-//        }
-//        notparticipating = notparticipating ^ bitmask;
-//        bitmask <<=1;
-//    }
-//    return(sum);
-//}
-
-void my_MPI_Reduce_Max(element vector[VECSIZE], int size, int numDim, int myRank) {
-//    int notParticipating = 0;
-//    int bitmask = 1;
-//    float sum = // value;
-//    float newValue;
-//    
-//    for (int curDim = 0; curDim < numDim; curDim++) {
-//        if ((myRank & notParticipating) == 0) {
-//            if ((rank & bitmask) != 0) {
-//                int msgDestination = rank ^ bitmask;
-//                MPI_Send(<#const void *buf#>, <#int count#>, <#MPI_Datatype datatype#>, <#int dest#>, <#int tag#>, <#MPI_Comm comm#>)
-//            } else {
-//                int msgSource = rank ^ bitmask;
-//                MPI_Recv(<#void *buf#>, <#int count#>, <#MPI_Datatype datatype#>, <#int source#>, <#int tag#>, <#MPI_Comm comm#>, <#MPI_Status *status#>)
-//            }
-//        }
-//    }
-}
-
-void my_MPI_Broadcast_Max(element vector[VECSIZE], int size, int numDim, int myRank) {
-    
-}
-
 // MARK: HOTPLATE CODE
 
 void swapArrays() {
-    float** tempArray = newArray;
+    /* Swap the pointers */
+    tempArray = newArray;
     newArray = oldArray;
     oldArray = tempArray;
 }
@@ -216,13 +168,13 @@ int main(int argc, char *argv[])
     int start, end;
     int theSize;
     
-    double starttime;
+    double startTime;
     
     int nproc, iproc;
     MPI_Status status;
     
     MPI_Init(&argc, &argv);
-    starttime = When();
+    startTime = When();
     
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
@@ -291,14 +243,10 @@ int main(int argc, char *argv[])
         /* Do a reduce to see if everybody is done */
         MPI_Allreduce(&done, &reallydone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
         
-        /* Swap the pointers */
-        tempArray = newArray;
-        newArray = oldArray;
-        oldArray = tempArray;
+        swapArrays();
     }
     
     /* print out the number of iterations to relax */
-    fprintf(stderr, "%d:It took %d iterations and %lf seconds to relax the system\n",
-            iproc,cnt,When() - starttime);
+    fprintf(stderr, "%d:It took %d iterations and %lf seconds to relax the system\n", iproc, cnt, When() - startTime);
     MPI_Finalize();
 }

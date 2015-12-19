@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		270B83B21C21435300E14504 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 270B83B11C21435300E14504 /* main.c */; };
+		A225B1261C25D6730002833A /* libmpi_cxx.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A225B1241C25D6730002833A /* libmpi_cxx.1.dylib */; };
+		A225B1271C25D6730002833A /* libmpi.12.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A225B1251C25D6730002833A /* libmpi.12.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +27,8 @@
 /* Begin PBXFileReference section */
 		270B83AE1C21435300E14504 /* Lab 4 - MPI Hotplate */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Lab 4 - MPI Hotplate"; sourceTree = BUILT_PRODUCTS_DIR; };
 		270B83B11C21435300E14504 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		A225B1241C25D6730002833A /* libmpi_cxx.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmpi_cxx.1.dylib; path = "../../../../usr/local/Cellar/open-mpi/1.10.1_1/lib/libmpi_cxx.1.dylib"; sourceTree = "<group>"; };
+		A225B1251C25D6730002833A /* libmpi.12.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmpi.12.dylib; path = "../../../../usr/local/Cellar/open-mpi/1.10.1_1/lib/libmpi.12.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +36,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A225B1261C25D6730002833A /* libmpi_cxx.1.dylib in Frameworks */,
+				A225B1271C25D6730002833A /* libmpi.12.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,6 +47,8 @@
 		270B83A51C21435300E14504 = {
 			isa = PBXGroup;
 			children = (
+				A225B1241C25D6730002833A /* libmpi_cxx.1.dylib */,
+				A225B1251C25D6730002833A /* libmpi.12.dylib */,
 				270B83B01C21435300E14504 /* Lab 4 - MPI Hotplate */,
 				270B83AF1C21435300E14504 /* Products */,
 			);
@@ -207,14 +215,24 @@
 		270B83B61C21435300E14504 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+					"/usr/local/Cellar/open-mpi/1.10.1_1/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = /usr/local/include;
 			};
 			name = Debug;
 		};
 		270B83B71C21435300E14504 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+					"/usr/local/Cellar/open-mpi/1.10.1_1/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = /usr/local/include;
 			};
 			name = Release;
 		};
@@ -237,6 +255,7 @@
 				270B83B71C21435300E14504 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
