@@ -126,8 +126,8 @@ int arrayIsFinished() {
                 difference = getDifference(i, j);
                 
                 if (difference >= 0.1) {
-                    //                        printf("\nDifference: %f", difference);
-                    //                        printf("\nRow: %d || Col: %d", i, j);
+//                        printf("\nDifference: %f", difference);
+//                        printf("\nRow: %d || Col: %d", i, j);
                     isFinished = 0;
                     break;
                 }
@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
     int cnt;
     int start, end;
     int theSize;
+    char hostName[255];
     
     double startTime;
     
@@ -178,39 +179,28 @@ int main(int argc, char *argv[])
     
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
-    fprintf(stderr,"%d: Hello from %d of %d\n", iproc, iproc, nproc);
     
-    /* Determine how much I should be doing and allocate the arrays */
+    gethostname(hostName, 253);
+    
+    fprintf(stderr,"%s: Hello from %d of %d\n", hostName, iproc, nproc);
+    
+    // # of Rows
     theSize = MAX_ARRAY_SIZE / nproc;
+    start = 1;
+    
     allocateArray(&newArray, theSize);
     allocateArray(&oldArray, theSize);
     
-    start = 1;
-    end = theSize + 1;
-    
-    /* Initialize the cells */
-    for (i = 0; i < theSize + 2; i++)
-    {
-        newArray[i] = oldArray[i] = 50;
-    }
-    
-    /* Initialize the Boundaries */
-    if (iproc == 0)
-    {
-        start = 2;
-        newArray[1] = oldArray[1] = 100;
-    }
-    if (iproc == nproc - 1)
-    {
-        end = theSize;
-        newArray[theSize] = oldArray[theSize] = 0;
-    }
-    
     /* Now run the relaxation */
     reallydone = 0;
+    
     for(cnt = 0; !reallydone; cnt++)
     {
-        /* First, I must get my neighbors boundary values */
+        // TODO: Swap rows up.
+        // TODO: Setup checks for the outside.
+        
+        
+        
         if (iproc != 0)
         {
             MPI_Send(&oldArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
@@ -223,22 +213,9 @@ int main(int argc, char *argv[])
             MPI_Recv(&oldArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
         }
         
-        /* Do the calculations */
-        for (i = start; i < end; i++)
-        {
-            newArray[i] = (oldArray[i-1] + oldArray[i+1] + 2 * oldArray[i]) / 4.0;
-        }
+        // TODO: Do the relaxation calculation.
         
-        /* Check to see if we are done */
-        done = 1;
-        for (i = start; i < end; i++)
-        {
-            if (fabs((newArray[i-1] + newArray[i+1])/ 2.0 - newArray[i]) > EPSILON)
-            {
-                done = 0;
-                break;
-            }
-        }
+        // TODO: Check to see if you're done.
         
         /* Do a reduce to see if everybody is done */
         MPI_Allreduce(&done, &reallydone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
