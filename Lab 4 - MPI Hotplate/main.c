@@ -13,24 +13,10 @@
 #include <sys/time.h>
 #include "mpi.h"
 
-// MARK: MPI DECLARARTIONS
-
-#define VECSIZE 8
-#define ITERATIONS 10000
-
-typedef struct {
-    double val;
-    int rank;
-} element;
-
 // MARK: HOTPLATE DECLARARTIONS
 
 #define MAX_ARRAY_SIZE 16384
 #define EPSILON  0.1
-
-float** newArray;
-float** oldArray;
-float** tempArray;
 
 double When()
 {
@@ -41,42 +27,38 @@ double When()
 
 // MARK: HOTPLATE CODE
 
-void swapArrays() {
-    /* Swap the pointers */
-    tempArray = newArray;
-    newArray = oldArray;
-    oldArray = tempArray;
+float getDifference(int i, int j, float** array) {
+    float middle = array[i][j];
+    
+    float up = array[i - 1][j];
+    float down = array[i + 1][j];
+    float left = array[i][j - 1];
+    float right = array[i][j + 1];
+    
+    float result = fabs(middle - ((down + up + right + left) / 4));
+    
+    return result;
 }
 
-float getDifference(int i, int j) {
-    float middle = newArray[i][j];
+float calculateNewCell(int i, int j, float** array) {
+    float middle = array[i][j];
     
-    float up = newArray[i - 1][j];
-    float down = newArray[i + 1][j];
-    float left = newArray[i][j - 1];
-    float right = newArray[i][j + 1];
-    
-    return fabs(middle - ((down + up + right + left) / 4));
-}
-
-float calculateNewCell(int i, int j) {
-    float middle = oldArray[i][j];
-    
-    float up = oldArray[i - 1][j];
-    float down = oldArray[i + 1][j];
-    float left = oldArray[i][j - 1];
-    float right = oldArray[i][j + 1];
+    float up = array[i - 1][j];
+    float down = array[i + 1][j];
+    float left = array[i][j - 1];
+    float right = array[i][j + 1];
     
     return (down + up + right + left + (middle * 4)) / 8;
 }
 
 void writeCSV(float** arr) {
     FILE *fp = fopen("hotplateOutput.csv", "w+");
+    int i, j;
     
-    for (int i = 0; i < MAX_ARRAY_SIZE; i++) {
+    for (i = 0; i < MAX_ARRAY_SIZE; i++) {
         fprintf(fp, "%f", arr[i][0]);
         
-        for (int j = 1; j < MAX_ARRAY_SIZE; j++) {
+        for (j = 1; j < MAX_ARRAY_SIZE; j++) {
             fprintf(fp, ", %f",arr[i][j]);
         }
         
@@ -86,144 +68,169 @@ void writeCSV(float** arr) {
     fclose(fp);
 }
 
-void setupArrays() {
-    for (int i = 0; i < MAX_ARRAY_SIZE; i++) {
-        for (int j = 0; j < MAX_ARRAY_SIZE; j++) {
+void setupArrays(int theSize, int iproc, int nproc, float** newArray, float** oldArray) {
+    int i, j;
+    
+    for (i = 0; i < theSize + 2; i++) {
+        for (j = 0; j < MAX_ARRAY_SIZE; j++) {
             newArray[i][j] = 50;                // All other cells
             oldArray[i][j] = 50;
         }
-        
-        newArray[0][i] = 0;                     // Top row
-        oldArray[0][i] = 0;
         
         newArray[i][0] = 0;                     // Left side
         oldArray[i][0] = 0;
         
         newArray[i][MAX_ARRAY_SIZE - 1] = 0;    // Right side
         oldArray[i][MAX_ARRAY_SIZE - 1] = 0;
+    }
+    
+    if (iproc == 0) {
+        // Fill in the top row.
+        int i;
         
-        newArray[MAX_ARRAY_SIZE - 1][i] = 100;  // Bottom row
-        oldArray[MAX_ARRAY_SIZE - 1][i] = 100;
+        for (i = 0; i < MAX_ARRAY_SIZE; i++) {
+            newArray[0][i] = 0;
+            oldArray[0][i] = 0;
+        }
+    } else if (iproc == nproc - 1) {
+        // Fill in the bottom row.
+        int i;
+        
+        for (i = 0; i < MAX_ARRAY_SIZE; i++) {
+            newArray[theSize + 1][i] = 100;
+            oldArray[theSize + 1][i] = 100;
+        }
     }
 }
 
-void allocateArray(float*** array, int arraySize) {
-    *array = (float **) malloc((arraySize + 2) * (sizeof(float *)));
+void allocateArray(float*** array, int theSize) {
+    *array = (float **) malloc((theSize + 2) * (sizeof(float *)));
+    int i;
     
-    for (int i = 0; i < arraySize + 2; i++) {
-        (*array)[i] = (float *) malloc((arraySize + 2) * (sizeof(float)));
+    for (i = 0; i < theSize + 2; i++) {
+        (*array)[i] = (float *) malloc((MAX_ARRAY_SIZE) * (sizeof(float)));
     }
 }
 
-int arrayIsFinished() {
-    float difference = 0;
-    float isFinished = 1;
+void calculateNextState(int theSize, float** newArray) {
+    int i, j;
     
-    // Avoid iterating over borders.
-    for (int i = 1; i < MAX_ARRAY_SIZE - 1; i++) {
-        if (isFinished == 1) {
-            for (int j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
-                difference = getDifference(i, j);
-                
-                if (difference >= 0.1) {
-//                        printf("\nDifference: %f", difference);
-//                        printf("\nRow: %d || Col: %d", i, j);
-                    isFinished = 0;
-                    break;
-                }
+    for (i = 1; i < theSize + 1; i++) {
+        for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
+            newArray[i][j] = calculateNewCell(i, j, newArray);
+        }
+    }
+}
+
+void swapArrays(float** newArray, float** oldArray) {
+    float** tempArray = newArray;
+    newArray = oldArray;
+    oldArray = tempArray;
+}
+
+int isDone(int theSize, float** array) {
+    int i, j;
+    
+//    fprintf(stderr, "SIZE: %i\n", theSize);
+    
+    for (i = 1; i < theSize + 1; i++) {
+        for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
+            if (getDifference(i, j, array) > EPSILON) {
+//                fprintf(stderr, "Difference is greater than EPSILON.\n");
+                return 0;
             }
         }
     }
     
-    return isFinished;
-}
-
-int calculateSteadyState() {
-    int isFinished = 0;
-    int iterations = 0;
-    
-    while (isFinished == 0) {
-        iterations++;
-        swapArrays();
-        
-        // Avoid iterating over borders.
-        for (int i = 1; i < MAX_ARRAY_SIZE - 1; i++) {
-            for (int j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
-                newArray[i][j] = calculateNewCell(i, j);
-            }
-        }
-        
-        isFinished = arrayIsFinished();
-    }
-    
-    return iterations;
+    return 1;
 }
 
 // MARK: MAIN()
 
 int main(int argc, char *argv[])
 {
-    int i, done, reallydone;
-    int cnt;
-    int start, end;
+    int done, reallyDone;
+    int count;
+    int start;
     int theSize;
     char hostName[255];
     
     double startTime;
     
     int nproc, iproc;
-    MPI_Status status;
     
+    start = 1;
+    
+    MPI_Status status;
     MPI_Init(&argc, &argv);
-    startTime = When();
     
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
     MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
     
-    gethostname(hostName, 253);
-    
-    fprintf(stderr,"%s: Hello from %d of %d\n", hostName, iproc, nproc);
-    
     // # of Rows
     theSize = MAX_ARRAY_SIZE / nproc;
-    start = 1;
     
+    float** newArray;
+    float** oldArray;
+    
+    gethostname(hostName, 253);
+    startTime = When();
+    
+    fprintf(stderr,"%s: Hello from %d of %d. START: %i\n", hostName, iproc, nproc, theSize);
+    
+    // Allocate arrays.
     allocateArray(&newArray, theSize);
     allocateArray(&oldArray, theSize);
     
-    /* Now run the relaxation */
-    reallydone = 0;
+    // Setup arrays.
+    setupArrays(theSize, iproc, nproc, newArray, oldArray);
     
-    for(cnt = 0; !reallydone; cnt++)
+    /* Now run the relaxation */
+    reallyDone = 0;
+    
+    for(count = 0; !reallyDone; count++)
     {
-        // TODO: Swap rows up.
-        // TODO: Setup checks for the outside.
+        fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
         
+        calculateNextState(theSize, newArray);
         
-        
-        if (iproc != 0)
+        // Send rows up.
+        if (iproc > 0)
         {
-            MPI_Send(&oldArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
-            MPI_Recv(&oldArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Send(&newArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
+            
+            // Last row shouldn't receive anything new.
+            if (iproc < nproc - 1) {
+                MPI_Recv(&newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
+            }
         }
         
-        if (iproc != nproc - 1)
+        // Send rows down.
+        if (iproc < nproc - 1)
         {
-            MPI_Send(&oldArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);
-            MPI_Recv(&oldArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Send(&newArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);\
+            
+            // First row shouldn't receive anything.
+            if (iproc > 0) {
+                MPI_Recv(&newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
+            }
         }
         
-        // TODO: Do the relaxation calculation.
+//        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
         
-        // TODO: Check to see if you're done.
+        // Calculate new done value
+        done = isDone(theSize, newArray);
         
-        /* Do a reduce to see if everybody is done */
-        MPI_Allreduce(&done, &reallydone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+        // Reduce all done values.
+        MPI_Allreduce(&done, &reallyDone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
         
-        swapArrays();
+        // TODO: Get code example for MPI_Allreduce.
+        if (reallyDone) { break; }
+        
+//        swapArrays(newArray, oldArray);
     }
     
     /* print out the number of iterations to relax */
-    fprintf(stderr, "%d:It took %d iterations and %lf seconds to relax the system\n", iproc, cnt, When() - startTime);
+    fprintf(stderr, "%d:It took %d iterations and %lf seconds to relax the system\n", iproc, count, When() - startTime);
     MPI_Finalize();
 }
