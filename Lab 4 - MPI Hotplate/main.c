@@ -88,17 +88,19 @@ void setupArrays(int theSize, int iproc, int nproc, float** newArray, float** ol
         // Fill in the top row.
         int i;
         
+        // 'newArray[1]...' here because the first proc has one extra row at the beginning.
         for (i = 0; i < MAX_ARRAY_SIZE; i++) {
-            newArray[0][i] = 0;
-            oldArray[0][i] = 0;
+            newArray[1][i] = 0;
+            oldArray[1][i] = 0;
         }
     } else if (iproc == nproc - 1) {
         // Fill in the bottom row.
         int i;
         
+        // 'theSize' here because the last proc has one extra row on the end.
         for (i = 0; i < MAX_ARRAY_SIZE; i++) {
-            newArray[theSize + 1][i] = 100;
-            oldArray[theSize + 1][i] = 100;
+            newArray[theSize][i] = 100;
+            oldArray[theSize][i] = 100;
         }
     }
 }
@@ -112,12 +114,12 @@ void allocateArray(float*** array, int theSize) {
     }
 }
 
-void calculateNextState(int theSize, float** newArray) {
+void calculateNextState(int start, int end, float** newArray, float** oldArray) {
     int i, j;
     
-    for (i = 1; i < theSize + 1; i++) {
+    for (i = start; i < end; i++) {
         for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
-            newArray[i][j] = calculateNewCell(i, j, newArray);
+            newArray[i][j] = calculateNewCell(i, j, oldArray);
         }
     }
 }
@@ -135,8 +137,9 @@ int isDone(int theSize, float** array) {
     
     for (i = 1; i < theSize + 1; i++) {
         for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
-            if (getDifference(i, j, array) > EPSILON) {
-//                fprintf(stderr, "Difference is greater than EPSILON.\n");
+            float result = getDifference(i, j, array);
+            if (result > EPSILON) {
+                fprintf(stderr, "%f > EPSILON.\n", result);
                 return 0;
             }
         }
@@ -151,7 +154,7 @@ int main(int argc, char *argv[])
 {
     int done, reallyDone;
     int count;
-    int start;
+    int start, end;
     int theSize;
     char hostName[255];
     
@@ -188,32 +191,43 @@ int main(int argc, char *argv[])
     /* Now run the relaxation */
     reallyDone = 0;
     
+    start = 1;
+    end = theSize + 1;
+    
+    if (iproc == 0) {
+        start = 2;
+    } else if (iproc == nproc - 1) {
+        end = theSize;
+    }
+    
     for(count = 0; !reallyDone; count++)
     {
-        fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
+        if (iproc == 0) {
+            fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
+        }
         
-        calculateNextState(theSize, newArray);
-        
-        // Send rows up.
+        calculateNextState(start, end, newArray, oldArray);
+
+        /* SEND ROWS DOWN */
         if (iproc > 0)
         {
             MPI_Send(&newArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
-            
-            // Last row shouldn't receive anything new.
-            if (iproc < nproc - 1) {
-                MPI_Recv(&newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
-            }
         }
         
-        // Send rows down.
+        // Last row shouldn't receive anything new.
+        if (iproc < nproc - 1) {
+            MPI_Recv(&newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
+        }
+        
+        /* SEND ROWS UP */
         if (iproc < nproc - 1)
         {
             MPI_Send(&newArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);\
-            
-            // First row shouldn't receive anything.
-            if (iproc > 0) {
-                MPI_Recv(&newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
-            }
+        }
+        
+        // First row shouldn't receive anything.
+        if (iproc > 0) {
+            MPI_Recv(&newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
         }
         
 //        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
@@ -227,7 +241,7 @@ int main(int argc, char *argv[])
         // TODO: Get code example for MPI_Allreduce.
         if (reallyDone) { break; }
         
-//        swapArrays(newArray, oldArray);
+        swapArrays(newArray, oldArray);
     }
     
     /* print out the number of iterations to relax */
