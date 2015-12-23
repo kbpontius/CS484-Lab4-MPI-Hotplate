@@ -15,7 +15,7 @@
 
 // MARK: HOTPLATE DECLARARTIONS
 
-#define MAX_ARRAY_SIZE 16384
+#define MAX_ARRAY_SIZE 4096 // TODO: CHANGE THIS TO 16K
 #define EPSILON  0.1
 
 double When()
@@ -130,16 +130,16 @@ void swapArrays(float** newArray, float** oldArray) {
     oldArray = tempArray;
 }
 
-int isDone(int theSize, float** array) {
+int isDone(int start, int end, float** array) {
     int i, j;
     
 //    fprintf(stderr, "SIZE: %i\n", theSize);
     
-    for (i = 1; i < theSize + 1; i++) {
+    for (i = start; i < end; i++) {
         for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
             float result = getDifference(i, j, array);
             if (result > EPSILON) {
-                fprintf(stderr, "%f > EPSILON.\n", result);
+                fprintf(stderr, "%f > EPSILON @ (%i, %i)\n", result, i, j);
                 return 0;
             }
         }
@@ -188,6 +188,8 @@ int main(int argc, char *argv[])
     // Setup arrays.
     setupArrays(theSize, iproc, nproc, newArray, oldArray);
     
+    fprintf(stderr, "%i: Array Value @ (1,0): %f\n", iproc, newArray[1][0]);
+    
     /* Now run the relaxation */
     reallyDone = 0;
     
@@ -211,29 +213,29 @@ int main(int argc, char *argv[])
         /* SEND ROWS DOWN */
         if (iproc > 0)
         {
-            MPI_Send(&newArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
+            MPI_Send(newArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
         }
         
         // Last row shouldn't receive anything new.
         if (iproc < nproc - 1) {
-            MPI_Recv(&newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
         }
         
         /* SEND ROWS UP */
         if (iproc < nproc - 1)
         {
-            MPI_Send(&newArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);\
+            MPI_Send(newArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);
         }
         
         // First row shouldn't receive anything.
         if (iproc > 0) {
-            MPI_Recv(&newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
         }
         
-//        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
+        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
         
         // Calculate new done value
-        done = isDone(theSize, newArray);
+        done = isDone(start, end, newArray);
         
         // Reduce all done values.
         MPI_Allreduce(&done, &reallyDone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
