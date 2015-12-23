@@ -15,7 +15,7 @@
 
 // MARK: HOTPLATE DECLARARTIONS
 
-#define MAX_ARRAY_SIZE 4096 // TODO: CHANGE THIS TO 16K
+#define MAX_ARRAY_SIZE 16384 // TODO: CHANGE THIS TO 16K
 #define EPSILON  0.1
 
 double When()
@@ -51,11 +51,11 @@ float calculateNewCell(int i, int j, float** array) {
     return (down + up + right + left + (middle * 4)) / 8;
 }
 
-void writeCSV(float** arr) {
+void writeCSV(int end, float** arr) {
     FILE *fp = fopen("hotplateOutput.csv", "w+");
     int i, j;
     
-    for (i = 0; i < MAX_ARRAY_SIZE; i++) {
+    for (i = 1; i < end; i++) {
         fprintf(fp, "%f", arr[i][0]);
         
         for (j = 1; j < MAX_ARRAY_SIZE; j++) {
@@ -206,31 +206,35 @@ int main(int argc, char *argv[])
     {
         if (iproc == 0) {
             fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
+            
+//            if (count == 300) {
+//                writeCSV(end, oldArray);
+//            }
         }
-        
-        calculateNextState(start, end, newArray, oldArray);
 
         /* SEND ROWS DOWN */
         if (iproc > 0)
         {
-            MPI_Send(newArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
+            MPI_Send(oldArray[1], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD);
         }
         
         // Last row shouldn't receive anything new.
         if (iproc < nproc - 1) {
-            MPI_Recv(newArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(oldArray[theSize + 1], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD, &status);
         }
         
         /* SEND ROWS UP */
         if (iproc < nproc - 1)
         {
-            MPI_Send(newArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);
+            MPI_Send(oldArray[theSize], 1, MPI_FLOAT, iproc + 1, 0, MPI_COMM_WORLD);
         }
         
         // First row shouldn't receive anything.
         if (iproc > 0) {
-            MPI_Recv(newArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(oldArray[0], 1, MPI_FLOAT, iproc - 1, 0, MPI_COMM_WORLD, &status);
         }
+        
+        calculateNextState(start, end, newArray, oldArray);
         
         fprintf(stderr, "%d: Checking if isDone.\n", iproc);
         
@@ -240,10 +244,11 @@ int main(int argc, char *argv[])
         // Reduce all done values.
         MPI_Allreduce(&done, &reallyDone, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
         
-        // TODO: Get code example for MPI_Allreduce.
         if (reallyDone) { break; }
         
-        swapArrays(newArray, oldArray);
+        float** tempArray = newArray;
+        newArray = oldArray;
+        oldArray = tempArray;
     }
     
     /* print out the number of iterations to relax */
