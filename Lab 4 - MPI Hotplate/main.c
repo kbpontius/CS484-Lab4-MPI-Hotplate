@@ -139,7 +139,7 @@ int isDone(int start, int end, float** array) {
         for (j = 1; j < MAX_ARRAY_SIZE - 1; j++) {
             float result = getDifference(i, j, array);
             if (result > EPSILON) {
-                fprintf(stderr, "%f > EPSILON @ (%i, %i)\n", result, i, j);
+//                fprintf(stderr, "%f > EPSILON @ (%i, %i)\n", result, i, j);
                 return 0;
             }
         }
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
         
         calculateNextState(start, end, newArray, oldArray);
         
-        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
+//        fprintf(stderr, "%d: Checking if isDone.\n", iproc);
         
         // Calculate new done value
         done = isDone(start, end, newArray);
