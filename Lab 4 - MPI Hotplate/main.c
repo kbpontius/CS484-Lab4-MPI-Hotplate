@@ -203,13 +203,13 @@ int main(int argc, char *argv[])
     
     for(count = 0; !reallyDone; count++)
     {
-        if (iproc == 0) {
-            fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
-            
-//            if (count == 300) {
-//                writeCSV(end, oldArray);
-//            }
-        }
+//        if (iproc == 0) {
+//            fprintf(stderr, "%i being calculateNextState() on count %i\n", iproc, count);
+//            
+////            if (count == 300) {
+////                writeCSV(end, oldArray);
+////            }
+//        }
 
         /* SEND ROWS DOWN */
         if (iproc > 0)
