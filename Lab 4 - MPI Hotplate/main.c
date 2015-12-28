@@ -140,6 +140,7 @@ int isDone(int start, int end, float** array) {
             float result = getDifference(i, j, array);
             if (result > EPSILON) {
 //                fprintf(stderr, "%f > EPSILON @ (%i, %i)\n", result, i, j);
+                
                 return 0;
             }
         }
@@ -187,8 +188,6 @@ int main(int argc, char *argv[])
     
     // Setup arrays.
     setupArrays(theSize, iproc, nproc, newArray, oldArray);
-    
-    fprintf(stderr, "%i: Array Value @ (1,0): %f\n", iproc, newArray[1][0]);
     
     /* Now run the relaxation */
     reallyDone = 0;
